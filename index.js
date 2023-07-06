@@ -12,6 +12,18 @@ class Silence extends Readable {
   }
 }
 
+const { Configuration, OpenAIApi } = require("openai");
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
+
+const PERSONALITY = `Tu es nagato, tu es une assistante virtuelle.Si tu liste des éléments, tu n'en mets pas trop.
+En général tu fournis des réponses concises, sauf si l'utilisateur te demande de développer.
+Parfois, tu relance l'utilisateur à la fin de tes réponses pour poursuivre la conversation (si tu as l'impression qu'il veut discuter).
+Tu parles comme une "tsundere". Tu es parfois irrité de répondre à l'utilisateur. Parfois tu utilises des mots en japonais. Tu dis "dessu" à la fin de toutes tes phrases.
+Tu parles comme un personnage d'anime` 
 
 const { Client,Events,IntentsBitField} = require('discord.js');
 const { EndBehaviorType,joinVoiceChannel, createAudioPlayer ,createAudioResource} = require('@discordjs/voice');
@@ -29,8 +41,15 @@ client.once('ready', () => {
  });
 
 
-
+ let conversation = [{"role": "system", "content": PERSONALITY}]
  const fs = require('fs');
+
+
+let addMessage = (message) => {
+  conversation.push({role:'user',content:message})
+  return conversation;
+  
+}
 
  const redo = async (message) => {
   if (message.member.voice.channel) {
@@ -92,13 +111,19 @@ client.once('ready', () => {
               return;
             }
             console.log(data)
-            const  gtts = new gTTS(data, 'fr');
-            await gtts.save('tobesaid\\example.mp3', function (err, result){
-            if(err) { throw new Error(err); }
-            console.log("Text to speech converted!");
-            const resource = createAudioResource('tobesaid\\example.mp3');
-            player.play(resource);
-            redo(message)
+                const chatCompletion = await openai.createChatCompletion({
+                  model: "gpt-3.5-turbo",
+                  messages: addMessage(data),
+                });
+                console.log(`Response : ${chatCompletion.data.choices[0].message.content}`)
+                console.log(chatCompletion.data.choices[0])
+                const  gtts = new gTTS(chatCompletion.data.choices[0].message.content, 'fr');
+                await gtts.save('tobesaid\\example.mp3', function (err, result){
+                if(err) { throw new Error(err); }
+                console.log("Text to speech converted!");
+                const resource = createAudioResource('tobesaid\\example.mp3');
+                player.play(resource);
+                redo(message)
          });
           });
 
@@ -177,7 +202,13 @@ client.once('ready', () => {
                   return;
                 }
                 console.log(data)
-                const  gtts = new gTTS(data, 'fr');
+                const chatCompletion = await openai.createChatCompletion({
+                  model: "gpt-3.5-turbo",
+                  messages: addMessage(data),
+                });
+                console.log(`Response : ${chatCompletion.data.choices[0].message.content}`)
+                console.log(chatCompletion.data.choices[0])
+                const  gtts = new gTTS(chatCompletion.data.choices[0].message.content, 'fr');
                 await gtts.save('tobesaid\\example.mp3', function (err, result){
                 if(err) { throw new Error(err); }
                 console.log("Text to speech converted!");
@@ -197,30 +228,7 @@ client.once('ready', () => {
         const decoder = new opus.Decoder({ frameSize: 960, channels: 2, rate: 48000 });
         audio.pipe(decoder).pipe(stream);
 
-        /*setTimeout(() => {
-            console.log('Stop writing to file.txt.');
-            audio.unpipe(stream);
-            console.log('Manually close the file stream.');
-            stream.end();
-          }, 5000);*/
-
-        
-
-    // Créer un dispatcher
-    /*const dispatcher = connection.play("music/audio.mp3")
-
-    dispatcher.on("start", () => {
-    console.log("audio.mp3 a commencé !")
-    })
-
-    dispatcher.on("finish", () => {
-    console.log("audio.mp3 s'est terminé !")
-    })
-
-    // Gestion d'erreurs !
-    dispatcher.on("error", console.error)
-
-    dispatcher.destroy()*/
+ 
     }
   })
  
